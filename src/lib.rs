@@ -156,7 +156,7 @@ macro_rules! try_from {
     };
 
     // convert struct type
-    (struct ($src:ident : $src_type:ty) -> <$dst_type:ty, $err_type:ty> { $($field:ident$(: $value:expr)?,)* }) => {
+    (struct ($src:ident : $src_type:ty) -> <$dst_type:ty, $err_type:ty> { $($field:ident$(: $value:expr)?),*$(,)? }) => {
         try_from!(($src: $src_type) -> <$dst_type, $err_type> {
             Ok(Self {
                 $($field: __try_convert_struct_field__!($src, $field $(,$value)?),)*
@@ -165,7 +165,7 @@ macro_rules! try_from {
     };
 
     // convert enum type
-    (enum ($src:ident : $src_type:ty) -> <$dst_type:ty, $err_type:ty> { $($variant:ident$(($var:ident))?$(=> $value:expr)?,)* }) => {
+    (enum ($src:ident : $src_type:ty) -> <$dst_type:ty, $err_type:ty> { $($variant:ident$(($var:ident))?$(=> $value:expr)?),*$(,)? }) => {
         try_from!(($src: $src_type) -> <$dst_type, $err_type> {
             type Src = $src_type;
             Ok(match $src {
@@ -175,12 +175,14 @@ macro_rules! try_from {
     };
 }
 
+// ----------------------------------------------------------------
+
 #[cfg(feature = "warned")]
 pub use warned;
 
 #[cfg(feature = "warned")]
 #[macro_export]
-macro_rules! __warn_convert_struct_field__ {
+macro_rules! __force_convert_struct_field__ {
     ($src:ident, $field:ident, $warnings:ident) => {
         warned::Warned::unwrap($src.$field.force_into(), &mut $warnings)
     };
@@ -189,6 +191,62 @@ macro_rules! __warn_convert_struct_field__ {
     };
 }
 
+#[cfg(feature = "warned")]
+#[macro_export]
+macro_rules! __force_convert_enum_variant__ {
+    ($variant:ident) => {
+        Self::$variant.into()
+    };
+    ($variant:ident($var:ident)) => {
+        warned::Warned::map(
+            warned::Warned::map_warnings($var.force_into(), Into::into),
+            Self::$variant,
+        )
+    };
+    ($variant:ident $(($var:ident))? => $value:expr) => {
+        $value
+    };
+}
+
+/// Helper to `impl ForceFrom<$src_type> for $dst_type`.
+/// ```
+/// use impl_converter_helper::*;
+/// use impl_converter_helper::warned::ForceInto;
+///
+/// #[derive(Debug, PartialEq, Eq)]
+/// struct StructA { num: i32 }
+///
+/// #[derive(Debug, PartialEq, Eq)]
+/// struct StructB { num: i64, text: String }
+///
+/// #[derive(Debug, PartialEq, Eq)]
+/// enum EnumA { Case1, Case2(i32), Case3(StructA), Case4(String) }
+///
+/// #[derive(Debug, PartialEq, Eq)]
+/// enum EnumB { Case1, Case2(i64), Case3(StructB) }
+///
+/// // convert struct to struct
+/// force_from!(struct (src: StructA) -> <StructB, anyhow::Error> {
+///     num,
+///     text: format!("num = {}", src.num),
+/// });
+/// assert_eq!(StructB { num: 123, text: "num = 123".into() }, StructA { num: 123 }.force_into().value);
+///
+/// // convert enum to enum
+/// force_from!(enum (src: EnumA) -> <EnumB, anyhow::Error> {
+///     Case1,
+///     Case2(n),
+///     Case3(x),
+///     Case4(s) => warned::Warned::new(Self::Case1, vec![anyhow::anyhow!("fallback to Case1")])
+/// });
+/// assert_eq!(EnumB::Case2(321), EnumA::Case2(321).force_into().value);
+///
+/// // convert anyway
+/// force_from!((src: StructA) -> <EnumA, anyhow::Error> {
+///     warned::Warned::new(Self::Case2(src.num), vec![])
+/// });
+/// assert_eq!(EnumA::Case2(111), StructA { num: 111 }.force_into().value);
+/// ```
 #[cfg(feature = "warned")]
 #[macro_export]
 macro_rules! force_from {
@@ -201,13 +259,23 @@ macro_rules! force_from {
     };
 
     // convert struct type
-    (struct ($src:ident : $src_type:ty) -> <$dst_type:ty, $warn_type:ty> { $($field:ident$(: $value:expr)?,)* }) => {
+    (struct ($src:ident : $src_type:ty) -> <$dst_type:ty, $warn_type:ty> { $($field:ident$(: $value:expr)?),*$(,)? }) => {
         force_from!(($src: $src_type) -> <$dst_type, $warn_type> {
             let mut warnings: Vec<$warn_type> = vec![];
             let value = Self {
-                $($field: __warn_convert_struct_field__!($src, $field, warnings $(,$value)?),)*
+                $($field: __force_convert_struct_field__!($src, $field, warnings $(,$value)?),)*
             };
             warned::Warned::new(value, warnings)
+        });
+    };
+
+    // convert enum type
+    (enum ($src:ident : $src_type:ty) -> <$dst_type:ty, $warn_type:ty> { $($variant:ident$(($var:ident))?$(=> $value:expr)?),*$(,)? }) => {
+        force_from!(($src: $src_type) -> <$dst_type, $warn_type> {
+            type Src = $src_type;
+            match $src {
+                $(Src::$variant$(($var))? => __force_convert_enum_variant__!($variant$(($var))? $(=> $value)?),)*
+            }
         });
     };
 }
