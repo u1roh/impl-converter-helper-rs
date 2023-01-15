@@ -9,16 +9,6 @@ macro_rules! __convert_struct_field__ {
 }
 
 #[macro_export]
-macro_rules! __try_convert_struct_field__ {
-    ($src:ident, $field:ident) => {
-        $src.$field.try_into()?
-    };
-    ($src:ident, $field:ident, $value:expr) => {
-        $value
-    };
-}
-
-#[macro_export]
 macro_rules! __convert_enum_variant__ {
     ($variant:ident $(($var:ident))?) => {
         Self::$variant$(($var.into()))?
@@ -28,17 +18,7 @@ macro_rules! __convert_enum_variant__ {
     };
 }
 
-#[macro_export]
-macro_rules! __try_convert_enum_variant__ {
-    ($variant:ident $(($var:ident))?) => {
-        Self::$variant$(($var.try_into()?))?
-    };
-    ($variant:ident $(($var:ident))? => $value:expr) => {
-        $value
-    };
-}
-
-/// impl From<$src_type> for $dst_type
+/// Helper to `impl From<$src_type> for $dst_type`.
 /// ```
 /// use impl_converter_helper::*;
 ///
@@ -46,13 +26,13 @@ macro_rules! __try_convert_enum_variant__ {
 /// struct StructA { num: i32 }
 ///
 /// #[derive(Debug, PartialEq, Eq)]
-/// struct StructB { num: i32, text: String }
+/// struct StructB { num: i64, text: String }
 ///
 /// #[derive(Debug, PartialEq, Eq)]
-/// enum EnumA { Case1, Case2(i32), Case3(String) }
+/// enum EnumA { Case1, Case2(i32), Case3(StructA), Case4(String) }
 ///
 /// #[derive(Debug, PartialEq, Eq)]
-/// enum EnumB { Case1, Case2(i32), CaseX(String) }
+/// enum EnumB { Case1, Case2(i64), Case3(StructB), CaseX(String) }
 ///
 /// // convert struct to struct
 /// from!(struct (src: StructA) -> StructB {
@@ -65,7 +45,8 @@ macro_rules! __try_convert_enum_variant__ {
 /// from!(enum (src: EnumA) -> EnumB {
 ///     Case1,
 ///     Case2(n),
-///     Case3(s) => Self::CaseX(s),
+///     Case3(x),
+///     Case4(s) => Self::CaseX(s),
 /// });
 /// assert_eq!(EnumB::Case2(321), EnumA::Case2(321).into());
 ///
@@ -104,6 +85,66 @@ macro_rules! from {
     };
 }
 
+// ------------------------------------------------------------
+
+#[macro_export]
+macro_rules! __try_convert_struct_field__ {
+    ($src:ident, $field:ident) => {
+        $src.$field.try_into()?
+    };
+    ($src:ident, $field:ident, $value:expr) => {
+        $value
+    };
+}
+
+#[macro_export]
+macro_rules! __try_convert_enum_variant__ {
+    ($variant:ident $(($var:ident))?) => {
+        Self::$variant$(($var.try_into()?))?
+    };
+    ($variant:ident $(($var:ident))? => $value:expr) => {
+        $value
+    };
+}
+
+/// Helper to `impl TryFrom<$src_type> for $dst_type`.
+/// ```
+/// use impl_converter_helper::*;
+///
+/// #[derive(Debug, PartialEq, Eq)]
+/// struct StructA { num: i32 }
+///
+/// #[derive(Debug, PartialEq, Eq)]
+/// struct StructB { num: i64, text: String }
+///
+/// #[derive(Debug, PartialEq, Eq)]
+/// enum EnumA { Case1, Case2(i32), Case3(StructA), Case4(String) }
+///
+/// #[derive(Debug, PartialEq, Eq)]
+/// enum EnumB { Case1, Case2(i64), Case3(StructB) }
+///
+/// // convert struct to struct
+/// try_from!(struct (src: StructA) -> <StructB, anyhow::Error> {
+///     num,
+///     text: format!("num = {}", src.num),
+/// });
+/// assert_eq!(StructB { num: 123, text: "num = 123".into() }, StructA { num: 123 }.try_into().unwrap());
+///
+/// // convert enum to enum
+/// try_from!(enum (src: EnumA) -> <EnumB, anyhow::Error> {
+///     Case1,
+///     Case2(n),
+///     Case3(x),
+///     Case4(s) => anyhow::bail!("error"),
+/// });
+/// assert_eq!(EnumB::Case2(321), EnumA::Case2(321).try_into().unwrap());
+///
+/// // convert anyway
+/// try_from!((src: StructA) -> <EnumA, anyhow::Error> {
+///     Ok(Self::Case2(src.num))
+/// });
+/// assert_eq!(EnumA::Case2(111), StructA { num: 111 }.try_into().unwrap());
+/// ```
 #[macro_export]
 macro_rules! try_from {
     // impl From<$src_type> for $dst_type
@@ -128,7 +169,7 @@ macro_rules! try_from {
         try_from!(($src: $src_type) -> <$dst_type, $err_type> {
             type Src = $src_type;
             Ok(match $src {
-                $(Src::$variant$(($var))? => __convert_enum_variant__!($variant$(($var))? $(=> $value)?),)*
+                $(Src::$variant$(($var))? => __try_convert_enum_variant__!($variant$(($var))? $(=> $value)?),)*
             })
         });
     };
