@@ -1,23 +1,3 @@
-#[macro_export]
-macro_rules! __convert_struct_field__ {
-    ($src:ident, $field:ident) => {
-        $src.$field.into()
-    };
-    ($src:ident, $field:ident, $value:expr) => {
-        $value
-    };
-}
-
-#[macro_export]
-macro_rules! __convert_enum_variant__ {
-    ($variant:ident $(($var:ident))?) => {
-        Self::$variant$(($var.into()))?
-    };
-    ($variant:ident $(($var:ident))? => $value:expr) => {
-        $value
-    };
-}
-
 /// Helper to `impl From<$src_type> for $dst_type`.
 /// ```
 /// use impl_converter_helper::*;
@@ -65,21 +45,29 @@ macro_rules! from {
         }
     };
 
+    // utility for struct fields
+    (STRUCT_FIELD $src:ident.$field:ident) => { $src.$field.into() };
+    (STRUCT_FIELD $src:ident.$field:ident => $value:expr) => { $value };
+
     // convert struct type
     (struct ($src:ident : $src_type:ty) -> $dst_type:ty { $($field:ident$(: $value:expr)?),*$(,)? }) => {
         from!(($src: $src_type) -> $dst_type {
             Self {
-                $($field: __convert_struct_field__!($src, $field $(,$value)?)),*
+                $($field: from!(STRUCT_FIELD $src.$field $(=> $value)?)),*
             }
         });
     };
+
+    // utility for enum variants
+    (ENUM_VARIANT $variant:ident $(($var:ident))?) => { Self::$variant$(($var.into()))?  };
+    (ENUM_VARIANT $variant:ident $(($var:ident))? => $value:expr) => { $value };
 
     // convert enum type
     (enum ($src:ident : $src_type:ty) -> $dst_type:ty { $($variant:ident$(($var:ident))?$(=> $value:expr)?),*$(,)? }) => {
         from!(($src: $src_type) -> $dst_type {
             type Src = $src_type;
             match $src {
-                $(Src::$variant$(($var))? => __convert_enum_variant__!($variant$(($var))? $(=> $value)?)),*
+                $(Src::$variant$(($var))? => from!(ENUM_VARIANT $variant$(($var))? $(=> $value)?)),*
             }
         });
     };
