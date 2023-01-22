@@ -15,14 +15,14 @@
 /// enum EnumB { Case1, Case2(i64), Case3(StructB), CaseX(String) }
 ///
 /// // convert struct to struct
-/// from!(struct (src: StructA) -> StructB {
+/// from!((src: StructA) -> StructB as struct {
 ///     num,
 ///     text: format!("num = {}", src.num),
 /// });
 /// assert_eq!(StructB { num: 123, text: "num = 123".into() }, StructA { num: 123 }.into());
 ///
 /// // convert enum to enum
-/// from!(enum (src: EnumA) -> EnumB {
+/// from!((src: EnumA) -> EnumB as enum {
 ///     Case1,
 ///     Case2(n),
 ///     Case3(x),
@@ -50,7 +50,7 @@ macro_rules! from {
     (STRUCT_FIELD $src:ident.$field:ident => $value:expr) => { $value };
 
     // convert struct type
-    (struct ($src:ident : $src_type:ty) -> $dst_type:ty { $($field:ident$(: $value:expr)?),*$(,)? }) => {
+    (($src:ident : $src_type:ty) -> $dst_type:ty as struct { $($field:ident$(: $value:expr)?),*$(,)? }) => {
         from!(($src: $src_type) -> $dst_type {
             Self {
                 $($field: from!(STRUCT_FIELD $src.$field $(=> $value)?)),*
@@ -63,7 +63,7 @@ macro_rules! from {
     (ENUM_VARIANT $variant:ident $(($var:ident))? => $value:expr) => { $value };
 
     // convert enum type
-    (enum ($src:ident : $src_type:ty) -> $dst_type:ty { $($variant:ident$(($var:ident))?$(=> $value:expr)?),*$(,)? }) => {
+    (($src:ident : $src_type:ty) -> $dst_type:ty as enum { $($variant:ident$(($var:ident))?$(=> $value:expr)?),*$(,)? }) => {
         from!(($src: $src_type) -> $dst_type {
             type Src = $src_type;
             match $src {
@@ -92,14 +92,14 @@ macro_rules! from {
 /// enum EnumB { Case1, Case2(i64), Case3(StructB) }
 ///
 /// // convert struct to struct
-/// try_from!(struct (src: StructA) -> <StructB, anyhow::Error> {
+/// try_from!((src: StructA) -> <StructB, anyhow::Error> as struct {
 ///     num,
 ///     text: format!("num = {}", src.num),
 /// });
 /// assert_eq!(StructB { num: 123, text: "num = 123".into() }, StructA { num: 123 }.try_into().unwrap());
 ///
 /// // convert enum to enum
-/// try_from!(enum (src: EnumA) -> <EnumB, anyhow::Error> {
+/// try_from!((src: EnumA) -> <EnumB, anyhow::Error> as enum {
 ///     Case1,
 ///     Case2(n),
 ///     Case3(x),
@@ -128,7 +128,7 @@ macro_rules! try_from {
     (STRUCT_FIELD $src:ident.$field:ident => $value:expr) => { $value };
 
     // convert struct type
-    (struct ($src:ident : $src_type:ty) -> <$dst_type:ty, $err_type:ty> { $($field:ident$(: $value:expr)?),*$(,)? }) => {
+    (($src:ident : $src_type:ty) -> <$dst_type:ty, $err_type:ty> as struct { $($field:ident$(: $value:expr)?),*$(,)? }) => {
         try_from!(($src: $src_type) -> <$dst_type, $err_type> {
             Ok(Self {
                 $($field: try_from!(STRUCT_FIELD $src.$field $(=> $value)?),)*
@@ -141,7 +141,7 @@ macro_rules! try_from {
     (ENUM_VARIANT $variant:ident $(($var:ident))? => $value:expr) => { $value };
 
     // convert enum type
-    (enum ($src:ident : $src_type:ty) -> <$dst_type:ty, $err_type:ty> { $($variant:ident$(($var:ident))?$(=> $value:expr)?),*$(,)? }) => {
+    (($src:ident : $src_type:ty) -> <$dst_type:ty, $err_type:ty> as enum { $($variant:ident$(($var:ident))?$(=> $value:expr)?),*$(,)? }) => {
         try_from!(($src: $src_type) -> <$dst_type, $err_type> {
             type Src = $src_type;
             match $src {
@@ -174,14 +174,14 @@ pub use warned;
 /// enum EnumB { Case1, Case2(i64), Case3(StructB) }
 ///
 /// // convert struct to struct
-/// force_from!(struct (src: StructA) -> <StructB, anyhow::Error> {
+/// force_from!((src: StructA) -> <StructB, anyhow::Error> as struct {
 ///     num,
 ///     text: format!("num = {}", src.num),
 /// });
 /// assert_eq!(StructB { num: 123, text: "num = 123".into() }, StructA { num: 123 }.force_into().value);
 ///
 /// // convert enum to enum
-/// force_from!(enum (src: EnumA) -> <EnumB, anyhow::Error> {
+/// force_from!((src: EnumA) -> <EnumB, anyhow::Error> as enum {
 ///     Case1,
 ///     Case2(n),
 ///     Case3(x),
@@ -215,7 +215,7 @@ macro_rules! force_from {
     };
 
     // convert struct type
-    (struct ($src:ident : $src_type:ty) -> <$dst_type:ty, $warn_type:ty> { $($field:ident$(: $value:expr)?),*$(,)? }) => {
+    (($src:ident : $src_type:ty) -> <$dst_type:ty, $warn_type:ty> as struct { $($field:ident$(: $value:expr)?),*$(,)? }) => {
         force_from!(($src: $src_type) -> <$dst_type, $warn_type> {
             let mut warnings: Vec<$warn_type> = vec![];
             let value = Self {
@@ -236,7 +236,7 @@ macro_rules! force_from {
     (ENUM_VARIANT $variant:ident $(($var:ident))? => $value:expr) => { warned::Warned::map_warnings($value, Into::into) };
 
     // convert enum type
-    (enum ($src:ident : $src_type:ty) -> <$dst_type:ty, $warn_type:ty> { $($variant:ident$(($var:ident))?$(=> $value:expr)?),*$(,)? }) => {
+    (($src:ident : $src_type:ty) -> <$dst_type:ty, $warn_type:ty> as enum { $($variant:ident$(($var:ident))?$(=> $value:expr)?),*$(,)? }) => {
         force_from!(($src: $src_type) -> <$dst_type, $warn_type> {
             type Src = $src_type;
             match $src {
