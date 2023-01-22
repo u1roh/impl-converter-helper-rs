@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-warned = { git = "https://github.com/u1roh/warned", rev = "488343c9bd0922e2bca97873764171cd6d380344", optional = true }
+warned = { version = "0.1", optional = true }
 
 [dev-dependencies]
 anyhow = "1.0"
