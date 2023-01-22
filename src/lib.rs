@@ -103,7 +103,7 @@ macro_rules! from {
 ///     Case1,
 ///     Case2(n),
 ///     Case3(x),
-///     Case4(s) => anyhow::bail!("error"),
+///     Case4(s) => Err(anyhow::anyhow!("error")),
 /// });
 /// assert_eq!(EnumB::Case2(321), EnumA::Case2(321).try_into().unwrap());
 ///
@@ -137,16 +137,16 @@ macro_rules! try_from {
     };
 
     // utility for enum variants
-    (ENUM_VARIANT $variant:ident $(($var:ident))?) => { Self::$variant$(($var.try_into()?))?  };
+    (ENUM_VARIANT $variant:ident $(($var:ident))?) => { Ok(Self::$variant$(($var.try_into()?))?)  };
     (ENUM_VARIANT $variant:ident $(($var:ident))? => $value:expr) => { $value };
 
     // convert enum type
     (enum ($src:ident : $src_type:ty) -> <$dst_type:ty, $err_type:ty> { $($variant:ident$(($var:ident))?$(=> $value:expr)?),*$(,)? }) => {
         try_from!(($src: $src_type) -> <$dst_type, $err_type> {
             type Src = $src_type;
-            Ok(match $src {
+            match $src {
                 $(Src::$variant$(($var))? => try_from!(ENUM_VARIANT $variant$(($var))? $(=> $value)?),)*
-            })
+            }
         });
     };
 }
@@ -233,7 +233,7 @@ macro_rules! force_from {
             Self::$variant,
         )
     };
-    (ENUM_VARIANT $variant:ident $(($var:ident))? => $value:expr) => { $value };
+    (ENUM_VARIANT $variant:ident $(($var:ident))? => $value:expr) => { warned::Warned::map_warnings($value, Into::into) };
 
     // convert enum type
     (enum ($src:ident : $src_type:ty) -> <$dst_type:ty, $warn_type:ty> { $($variant:ident$(($var:ident))?$(=> $value:expr)?),*$(,)? }) => {
