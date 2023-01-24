@@ -173,6 +173,12 @@ pub use warned;
 /// #[derive(Debug, PartialEq, Eq)]
 /// enum EnumB { Case1, Case2(i64), Case3(StructB) }
 ///
+/// #[derive(Debug, PartialEq, Eq)]
+/// struct CollectionA { items: Vec<EnumA> };
+///
+/// #[derive(Debug, PartialEq, Eq)]
+/// struct CollectionB { items: Vec<EnumB> };
+///
 /// // convert struct to struct
 /// force_from!((src: StructA) -> <StructB, anyhow::Error> as struct {
 ///     num,
@@ -194,6 +200,10 @@ pub use warned;
 ///     warned::Warned::new(Self::Case2(src.num), vec![])
 /// });
 /// assert_eq!(EnumA::Case2(111), StructA { num: 111 }.force_into().value);
+///
+/// force_from!((src: CollectionA) -> <CollectionB, anyhow::Error> as struct {
+///     items: @warn src.items.into_iter().map(ForceInto::force_into).collect()
+/// });
 /// ```
 #[cfg(feature = "warned")]
 #[macro_export]
@@ -210,16 +220,17 @@ macro_rules! force_from {
     (STRUCT_FIELD $src:ident.$field:ident, $warnings:ident) => {
         warned::Warned::unwrap($src.$field.force_into(), &mut $warnings)
     };
-    (STRUCT_FIELD $src:ident.$field:ident, $warnings:ident => $value:expr) => {
-        $value
+    (STRUCT_FIELD $src:ident.$field:ident, $warnings:ident => @warn $value:expr) => {
+        warned::Warned::unwrap($value, &mut $warnings)
     };
+    (STRUCT_FIELD $src:ident.$field:ident, $warnings:ident => $value:expr) => { $value };
 
     // convert struct type
-    (($src:ident : $src_type:ty) -> <$dst_type:ty, $warn_type:ty> as struct { $($field:ident$(: $value:expr)?),*$(,)? }) => {
+    (($src:ident : $src_type:ty) -> <$dst_type:ty, $warn_type:ty> as struct { $($field:ident$(: $(@$warn:ident)? $value:expr)?),*$(,)? }) => {
         force_from!(($src: $src_type) -> <$dst_type, $warn_type> {
             let mut warnings: Vec<$warn_type> = vec![];
             let value = Self {
-                $($field: force_from!(STRUCT_FIELD $src.$field, warnings $(=> $value)?),)*
+                $($field: force_from!(STRUCT_FIELD $src.$field, warnings $(=> $(@$warn)? $value)?),)*
             };
             warned::Warned::new(value, warnings)
         });
