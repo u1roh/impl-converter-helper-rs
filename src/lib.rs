@@ -40,7 +40,7 @@
 macro_rules! from {
     // impl From<$src_type> for $dst_type
     (($src:ident : $src_type:ty) -> $dst_type:ty $block:block) => {
-        impl From<$src_type> for $dst_type {
+        impl ::std::convert::From<$src_type> for $dst_type {
             fn from($src: $src_type) -> Self $block
         }
     };
@@ -117,9 +117,9 @@ macro_rules! from {
 macro_rules! try_from {
     // impl From<$src_type> for $dst_type
     (($src:ident : $src_type:ty) -> <$dst_type:ty, $err_type:ty> $block:block) => {
-        impl TryFrom<$src_type> for $dst_type {
+        impl ::std::convert::TryFrom<$src_type> for $dst_type {
             type Error = $err_type;
-            fn try_from($src: $src_type) -> Result<Self, Self::Error> $block
+            fn try_from($src: $src_type) -> ::std::result::Result<Self, Self::Error> $block
         }
     };
 
@@ -210,18 +210,18 @@ pub use warned;
 macro_rules! force_from {
     // impl ForceFrom<$src_type> for $dst_type
     (($src:ident : $src_type:ty) -> <$dst_type:ty, $warn_type:ty> $block:block) => {
-        impl warned::ForceFrom<$src_type> for $dst_type {
+        impl $crate::warned::ForceFrom<$src_type> for $dst_type {
             type Warning = $warn_type;
-            fn force_from($src: $src_type) -> warned::Warned<Self, Self::Warning> $block
+            fn force_from($src: $src_type) -> $crate::warned::Warned<Self, Self::Warning> $block
         }
     };
 
     // utilities for struct fields
     (STRUCT_FIELD $src:ident.$field:ident, $warnings:ident) => {
-        warned::Warned::unwrap($src.$field.force_into(), &mut $warnings)
+        $crate::warned::Warned::unwrap($src.$field.force_into(), &mut $warnings)
     };
     (STRUCT_FIELD $src:ident.$field:ident, $warnings:ident => @warn $value:expr) => {
-        warned::Warned::unwrap($value, &mut $warnings)
+        $crate::warned::Warned::unwrap($value, &mut $warnings)
     };
     (STRUCT_FIELD $src:ident.$field:ident, $warnings:ident => $value:expr) => { $value };
 
@@ -232,19 +232,19 @@ macro_rules! force_from {
             let value = Self {
                 $($field: force_from!(STRUCT_FIELD $src.$field, warnings $(=> $(@$warn)? $value)?),)*
             };
-            warned::Warned::new(value, warnings)
+            $crate::warned::Warned::new(value, warnings)
         });
     };
 
     // utilities for enum variants
     (ENUM_VARIANT $variant:ident) => { Self::$variant.into() };
     (ENUM_VARIANT $variant:ident($var:ident)) => {
-        warned::Warned::map(
-            warned::Warned::map_warnings($var.force_into(), Into::into),
+        $crate::warned::Warned::map(
+            $crate::warned::Warned::map_warnings($var.force_into(), Into::into),
             Self::$variant,
         )
     };
-    (ENUM_VARIANT $variant:ident $(($var:ident))? => $value:expr) => { warned::Warned::map_warnings($value, Into::into) };
+    (ENUM_VARIANT $variant:ident $(($var:ident))? => $value:expr) => { $crate::warned::Warned::map_warnings($value, Into::into) };
 
     // convert enum type
     (($src:ident : $src_type:ty) -> <$dst_type:ty, $warn_type:ty> as enum { $($variant:ident$(($var:ident))?$(=> $value:expr)?),*$(,)? }) => {
