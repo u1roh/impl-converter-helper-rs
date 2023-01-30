@@ -1,3 +1,60 @@
+//! This crate is a declarative macro library to help you implement the `From` or `TryFrom` trait for your type.
+//!
+//! ## Implementing `From` trait
+//! The [from] macro helps you to implement [From] trait.
+//!
+//! ```
+//! # use impl_converter_helper::from;
+//! # struct SourceType;
+//! # struct TargetType;
+//! from!((src: SourceType) -> TargetType {
+//!     /* ... */
+//!     # unimplemented!()
+//! });
+//! ```
+//! The above code results in the following code.
+//! ```
+//! # struct SourceType;
+//! # struct TargetType;
+//! impl From<SourceType> for TargetType {
+//!     fn from(src: SourceType) -> Self {
+//!         /* ... */
+//!         # unimplemented!()
+//!     }
+//! }
+//! ```
+//! You can also use the `as struct` or `as enum` keywords to convert between `struct` types or `enum` types.
+//! See the details at [from].
+//!
+//! ## Implementing `TryFrom` trait
+//! The [try_from] macro helps you to implement [TryFrom] trait.
+//!
+//! ```
+//! # use impl_converter_helper::try_from;
+//! # struct SourceType;
+//! # struct TargetType;
+//! # struct ErrorType;
+//! try_from!((src: SourceType) -> <TargetType, ErrorType> {
+//!     /* ... */
+//!     # unimplemented!()
+//! });
+//! ```
+//! The above code results in the following code.
+//! ```
+//! # struct SourceType;
+//! # struct TargetType;
+//! # struct ErrorType;
+//! impl TryFrom<SourceType> for TargetType {
+//!     type Error = ErrorType;
+//!     fn try_from(src: SourceType) -> Result<Self, Self::Error> {
+//!         /* ... */
+//!         # unimplemented!()
+//!     }
+//! }
+//! ```
+//! You can also use the `as struct` or `as enum` keywords to convert between `struct` types or `enum` types.
+//! See the details at [try_from].
+
 /// DON'T USE! This can only be used within the [from] macro.
 #[doc(hidden)]
 #[macro_export]
