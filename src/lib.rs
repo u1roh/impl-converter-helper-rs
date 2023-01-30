@@ -268,6 +268,8 @@ macro_rules! __force_from_enum_variant {
 /// });
 /// assert_eq!(EnumA::Case2(111), StructA { num: 111 }.force_into().value);
 ///
+/// // Use the keyword `@warn` if the expression returns the type `Warned<T, W>`.
+/// // Then the value is automatically applied to `Warned::unwrap()`.
 /// force_from!((src: CollectionA) -> <CollectionB, anyhow::Error> as struct {
 ///     items: @warn src.items.into_iter().map(ForceInto::force_into).collect()
 /// });
