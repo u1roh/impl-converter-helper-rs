@@ -111,6 +111,8 @@ macro_rules! __try_from_enum_variant {
 
 /// Helper to `impl TryFrom<$src_type> for $dst_type`.
 ///
+///
+/// # Example
 /// ```
 /// use impl_converter_helper::*;
 ///
@@ -220,6 +222,8 @@ macro_rules! __force_from_enum_variant {
 }
 
 /// Helper to `impl ForceFrom<$src_type> for $dst_type`.
+///
+/// # Example
 /// ```
 /// use impl_converter_helper::*;
 /// use impl_converter_helper::warned::ForceInto;
