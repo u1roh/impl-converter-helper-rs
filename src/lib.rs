@@ -1,4 +1,26 @@
+/// DON'T USE! This can only be used within the [from] macro.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __from_struct_field {
+    ($src:ident.$field:ident) => {
+        $src.$field.into()
+    };
+    ($src:ident.$field:ident => $value:expr) => {
+        $value
+    };
+}
+
+/// DON'T USE! This can only be used within the [from] macro.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __from_enum_variant {
+    ($variant:ident $(($var:ident))?) => { Self::$variant$(($var.into()))? };
+    ($variant:ident $(($var:ident))? => $value:expr) => { $value };
+}
+
 /// Helper to `impl From<$src_type> for $dst_type`.
+///
+/// # Example
 /// ```
 /// use impl_converter_helper::*;
 ///
@@ -45,29 +67,21 @@ macro_rules! from {
         }
     };
 
-    // utility for struct fields
-    (STRUCT_FIELD $src:ident.$field:ident) => { $src.$field.into() };
-    (STRUCT_FIELD $src:ident.$field:ident => $value:expr) => { $value };
-
     // convert struct type
     (($src:ident : $src_type:ty) -> $dst_type:ty as struct { $($field:ident$(: $value:expr)?),*$(,)? }) => {
         from!(($src: $src_type) -> $dst_type {
             Self {
-                $($field: from!(STRUCT_FIELD $src.$field $(=> $value)?)),*
+                $($field: __from_struct_field!($src.$field $(=> $value)?)),*
             }
         });
     };
-
-    // utility for enum variants
-    (ENUM_VARIANT $variant:ident $(($var:ident))?) => { Self::$variant$(($var.into()))?  };
-    (ENUM_VARIANT $variant:ident $(($var:ident))? => $value:expr) => { $value };
 
     // convert enum type
     (($src:ident : $src_type:ty) -> $dst_type:ty as enum { $($variant:ident$(($var:ident))?$(=> $value:expr)?),*$(,)? }) => {
         from!(($src: $src_type) -> $dst_type {
             type Src = $src_type;
             match $src {
-                $(Src::$variant$(($var))? => from!(ENUM_VARIANT $variant$(($var))? $(=> $value)?)),*
+                $(Src::$variant$(($var))? => __from_enum_variant!($variant$(($var))? $(=> $value)?)),*
             }
         });
     };
@@ -75,7 +89,28 @@ macro_rules! from {
 
 // ------------------------------------------------------------
 
+/// DON'T USE! This can only be used within the [try_from] macro.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __try_from_struct_field {
+    ($src:ident.$field:ident) => {
+        $src.$field.try_into()?
+    };
+    ($src:ident.$field:ident => $value:expr) => {
+        $value
+    };
+}
+
+/// DON'T USE! This can only be used within the [try_from] macro.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __try_from_enum_variant {
+    ($variant:ident $(($var:ident))?) => { Ok(Self::$variant$(($var.try_into()?))?)  };
+    ($variant:ident $(($var:ident))? => $value:expr) => { $value };
+}
+
 /// Helper to `impl TryFrom<$src_type> for $dst_type`.
+///
 /// ```
 /// use impl_converter_helper::*;
 ///
@@ -123,29 +158,21 @@ macro_rules! try_from {
         }
     };
 
-    // utility for struct fields
-    (STRUCT_FIELD $src:ident.$field:ident) => { $src.$field.try_into()?  };
-    (STRUCT_FIELD $src:ident.$field:ident => $value:expr) => { $value };
-
     // convert struct type
     (($src:ident : $src_type:ty) -> <$dst_type:ty, $err_type:ty> as struct { $($field:ident$(: $value:expr)?),*$(,)? }) => {
         try_from!(($src: $src_type) -> <$dst_type, $err_type> {
             Ok(Self {
-                $($field: try_from!(STRUCT_FIELD $src.$field $(=> $value)?),)*
+                $($field: __try_from_struct_field!($src.$field $(=> $value)?),)*
             })
         });
     };
-
-    // utility for enum variants
-    (ENUM_VARIANT $variant:ident $(($var:ident))?) => { Ok(Self::$variant$(($var.try_into()?))?)  };
-    (ENUM_VARIANT $variant:ident $(($var:ident))? => $value:expr) => { $value };
 
     // convert enum type
     (($src:ident : $src_type:ty) -> <$dst_type:ty, $err_type:ty> as enum { $($variant:ident$(($var:ident))?$(=> $value:expr)?),*$(,)? }) => {
         try_from!(($src: $src_type) -> <$dst_type, $err_type> {
             type Src = $src_type;
             match $src {
-                $(Src::$variant$(($var))? => try_from!(ENUM_VARIANT $variant$(($var))? $(=> $value)?),)*
+                $(Src::$variant$(($var))? => __try_from_enum_variant!($variant$(($var))? $(=> $value)?),)*
             }
         });
     };
@@ -155,6 +182,42 @@ macro_rules! try_from {
 
 #[cfg(feature = "warned")]
 pub use warned;
+
+/// DON'T USE! This can only be used within the [force_from] macro.
+#[cfg(feature = "warned")]
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __force_from_struct_field {
+    ($src:ident.$field:ident, $warnings:ident) => {
+        $crate::warned::Warned::unwrap($src.$field.force_into(), &mut $warnings)
+    };
+    ($src:ident.$field:ident, $warnings:ident => @warn $value:expr) => {
+        $crate::warned::Warned::unwrap($value, &mut $warnings)
+    };
+    ($src:ident.$field:ident, $warnings:ident => $value:expr) => {
+        $value
+    };
+}
+
+/// DON'T USE! This can only be used within the [force_from] macro.
+#[cfg(feature = "warned")]
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __force_from_enum_variant {
+    // utilities for enum variants
+    ($variant:ident) => {
+        Self::$variant.into()
+    };
+    ($variant:ident($var:ident)) => {
+        $crate::warned::Warned::map(
+            $crate::warned::Warned::map_warnings($var.force_into(), Into::into),
+            Self::$variant,
+        )
+    };
+    ($variant:ident $(($var:ident))? => $value:expr) => {
+        $crate::warned::Warned::map_warnings($value, Into::into)
+    };
+}
 
 /// Helper to `impl ForceFrom<$src_type> for $dst_type`.
 /// ```
@@ -216,42 +279,23 @@ macro_rules! force_from {
         }
     };
 
-    // utilities for struct fields
-    (STRUCT_FIELD $src:ident.$field:ident, $warnings:ident) => {
-        $crate::warned::Warned::unwrap($src.$field.force_into(), &mut $warnings)
-    };
-    (STRUCT_FIELD $src:ident.$field:ident, $warnings:ident => @warn $value:expr) => {
-        $crate::warned::Warned::unwrap($value, &mut $warnings)
-    };
-    (STRUCT_FIELD $src:ident.$field:ident, $warnings:ident => $value:expr) => { $value };
-
     // convert struct type
     (($src:ident : $src_type:ty) -> <$dst_type:ty, $warn_type:ty> as struct { $($field:ident$(: $(@$warn:ident)? $value:expr)?),*$(,)? }) => {
         force_from!(($src: $src_type) -> <$dst_type, $warn_type> {
             let mut warnings: Vec<$warn_type> = vec![];
             let value = Self {
-                $($field: force_from!(STRUCT_FIELD $src.$field, warnings $(=> $(@$warn)? $value)?),)*
+                $($field: __force_from_struct_field!($src.$field, warnings $(=> $(@$warn)? $value)?),)*
             };
             $crate::warned::Warned::new(value, warnings)
         });
     };
-
-    // utilities for enum variants
-    (ENUM_VARIANT $variant:ident) => { Self::$variant.into() };
-    (ENUM_VARIANT $variant:ident($var:ident)) => {
-        $crate::warned::Warned::map(
-            $crate::warned::Warned::map_warnings($var.force_into(), Into::into),
-            Self::$variant,
-        )
-    };
-    (ENUM_VARIANT $variant:ident $(($var:ident))? => $value:expr) => { $crate::warned::Warned::map_warnings($value, Into::into) };
 
     // convert enum type
     (($src:ident : $src_type:ty) -> <$dst_type:ty, $warn_type:ty> as enum { $($variant:ident$(($var:ident))?$(=> $value:expr)?),*$(,)? }) => {
         force_from!(($src: $src_type) -> <$dst_type, $warn_type> {
             type Src = $src_type;
             match $src {
-                $(Src::$variant$(($var))? => force_from!(ENUM_VARIANT $variant$(($var))? $(=> $value)?),)*
+                $(Src::$variant$(($var))? => __force_from_enum_variant!($variant$(($var))? $(=> $value)?),)*
             }
         });
     };
