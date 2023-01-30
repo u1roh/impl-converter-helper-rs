@@ -1,4 +1,4 @@
-# Helper Macro Library to Implement Converters
+# Helper macro library for implementing converters
 
 This crate is a declarative macro library to help you implement the `From` or `TryFrom` trait for your type.
 
