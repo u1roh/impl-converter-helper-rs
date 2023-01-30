@@ -2,6 +2,13 @@
 name = "impl-converter-helper"
 version = "0.1.0"
 edition = "2021"
+authors = ["Yuichiro Terada <terada.yuichiro@gmail.com>"]
+repository = "https://github.com/u1roh/impl-converter-helper-rs"
+documentation = "https://docs.rs/impl-converter-helper"
+keywords = ["macro", "converter", "From", "TryFrom"]
+readme = "README.md"
+description = "declarative macro library to help you implement the `From` or `TryFrom` trait for your type."
+license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
