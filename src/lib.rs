@@ -125,7 +125,9 @@ macro_rules! from {
     };
 
     // convert struct type
-    (($src:ident : $src_type:ty) -> $dst_type:ty as struct { $($field:ident$(: $value:expr)?),*$(,)? }) => {
+    (($src:ident : $src_type:ty) -> $dst_type:ty as struct {
+        $($field:ident$(: $value:expr)?),*$(,)?
+    }) => {
         from!(($src: $src_type) -> $dst_type {
             Self {
                 $($field: __from_struct_field!($src.$field $(=> $value)?)),*
@@ -134,7 +136,9 @@ macro_rules! from {
     };
 
     // convert enum type
-    (($src:ident : $src_type:ty) -> $dst_type:ty as enum { $($variant:ident$(($($var:ident),*))?$(=> $value:expr)?),*$(,)? }) => {
+    (($src:ident : $src_type:ty) -> $dst_type:ty as enum {
+        $($variant:ident$(($($var:ident),*))?$(=> $value:expr)?),*$(,)?
+    }) => {
         from!(($src: $src_type) -> $dst_type {
             type Src = $src_type;
             match $src {
@@ -218,7 +222,9 @@ macro_rules! try_from {
     };
 
     // convert struct type
-    (($src:ident : $src_type:ty) -> <$dst_type:ty, $err_type:ty> as struct { $($field:ident$(: $value:expr)?),*$(,)? }) => {
+    (($src:ident : $src_type:ty) -> <$dst_type:ty, $err_type:ty> as struct {
+        $($field:ident$(: $value:expr)?),*$(,)?
+    }) => {
         try_from!(($src: $src_type) -> <$dst_type, $err_type> {
             Ok(Self {
                 $($field: __try_from_struct_field!($src.$field $(=> $value)?),)*
@@ -227,7 +233,9 @@ macro_rules! try_from {
     };
 
     // convert enum type
-    (($src:ident : $src_type:ty) -> <$dst_type:ty, $err_type:ty> as enum { $($variant:ident$(($($var:ident),*))?$(=> $value:expr)?),*$(,)? }) => {
+    (($src:ident : $src_type:ty) -> <$dst_type:ty, $err_type:ty> as enum {
+        $($variant:ident$(($($var:ident),*))?$(=> $value:expr)?),*$(,)?
+    }) => {
         try_from!(($src: $src_type) -> <$dst_type, $err_type> {
             type Src = $src_type;
             match $src {
@@ -343,7 +351,9 @@ macro_rules! force_from {
     };
 
     // convert struct type
-    (($src:ident : $src_type:ty) -> <$dst_type:ty, $warn_type:ty> as struct { $($field:ident$(: $(@$warn:ident)? $value:expr)?),*$(,)? }) => {
+    (($src:ident : $src_type:ty) -> <$dst_type:ty, $warn_type:ty> as struct {
+        $($field:ident$(: $(@$warn:ident)? $value:expr)?),*$(,)?
+    }) => {
         force_from!(($src: $src_type) -> <$dst_type, $warn_type> {
             let mut warnings: Vec<$warn_type> = vec![];
             let value = Self {
@@ -354,7 +364,9 @@ macro_rules! force_from {
     };
 
     // convert enum type
-    (($src:ident : $src_type:ty) -> <$dst_type:ty, $warn_type:ty> as enum { $($variant:ident$(($($var:ident),*))?$(=> $value:expr)?),*$(,)? }) => {
+    (($src:ident : $src_type:ty) -> <$dst_type:ty, $warn_type:ty> as enum {
+        $($variant:ident$(($($var:ident),*))?$(=> $value:expr)?),*$(,)?
+    }) => {
         force_from!(($src: $src_type) -> <$dst_type, $warn_type> {
             type Src = $src_type;
             match $src {
