@@ -71,8 +71,8 @@ macro_rules! __from_struct_field {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __from_enum_variant {
-    ($variant:ident $(($var:ident))?) => { Self::$variant$(($var.into()))? };
-    ($variant:ident $(($var:ident))? => $value:expr) => { $value };
+    ($variant:ident $(($($var:ident),*))?) => { Self::$variant$(($($var.into()),*))? };
+    ($variant:ident $(($($var:ident),*))? => $value:expr) => { $value };
 }
 
 /// Helper to `impl From<$src_type> for $dst_type`.
@@ -88,10 +88,10 @@ macro_rules! __from_enum_variant {
 /// struct StructB { num: i64, text: String }
 ///
 /// #[derive(Debug, PartialEq, Eq)]
-/// enum EnumA { Case1, Case2(i32), Case3(StructA), Case4(String) }
+/// enum EnumA { Case1, Case2(i32), Case3(StructA, i32), Case4(String, i32) }
 ///
 /// #[derive(Debug, PartialEq, Eq)]
-/// enum EnumB { Case1, Case2(i64), Case3(StructB), CaseX(String) }
+/// enum EnumB { Case1, Case2(i64), Case3(StructB, i64), CaseX(String) }
 ///
 /// // convert struct to struct
 /// from!((src: StructA) -> StructB as struct {
@@ -104,8 +104,8 @@ macro_rules! __from_enum_variant {
 /// from!((src: EnumA) -> EnumB as enum {
 ///     Case1,
 ///     Case2(n),
-///     Case3(x),
-///     Case4(s) => Self::CaseX(s),
+///     Case3(x, n),
+///     Case4(s, n) => Self::CaseX(format!("{s}_{n}")),
 /// });
 /// assert_eq!(EnumB::Case2(321), EnumA::Case2(321).into());
 ///
@@ -134,11 +134,11 @@ macro_rules! from {
     };
 
     // convert enum type
-    (($src:ident : $src_type:ty) -> $dst_type:ty as enum { $($variant:ident$(($var:ident))?$(=> $value:expr)?),*$(,)? }) => {
+    (($src:ident : $src_type:ty) -> $dst_type:ty as enum { $($variant:ident$(($($var:ident),*))?$(=> $value:expr)?),*$(,)? }) => {
         from!(($src: $src_type) -> $dst_type {
             type Src = $src_type;
             match $src {
-                $(Src::$variant$(($var))? => __from_enum_variant!($variant$(($var))? $(=> $value)?)),*
+                $(Src::$variant$(($($var),*))? => __from_enum_variant!($variant$(($($var),*))? $(=> $value)?)),*
             }
         });
     };
