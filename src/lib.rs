@@ -267,13 +267,13 @@ macro_rules! __force_from_enum_variant {
     ($variant:ident) => {
         Self::$variant.into()
     };
-    ($variant:ident($var:ident)) => {
-        $crate::warned::Warned::map(
-            $crate::warned::Warned::map_warnings($var.force_into(), Into::into),
-            Self::$variant,
-        )
-    };
-    ($variant:ident $(($var:ident))? => $value:expr) => {
+    ($variant:ident($($var:ident),*)) => {{
+        use $crate::warned::Warned;
+        let mut warnings = vec![];
+        let value = Self::$variant($(Warned::unwrap($var.force_into(), &mut warnings)),*);
+        Warned::new(value, warnings)
+    }};
+    ($variant:ident $(($($var:ident),*))? => $value:expr) => {
         $crate::warned::Warned::map_warnings($value, Into::into)
     };
 }
@@ -292,10 +292,10 @@ macro_rules! __force_from_enum_variant {
 /// struct StructB { num: i64, text: String }
 ///
 /// #[derive(Debug, PartialEq, Eq)]
-/// enum EnumA { Case1, Case2(i32), Case3(StructA), Case4(String) }
+/// enum EnumA { Case1, Case2(i32), Case3(StructA, i32), Case4(String, bool) }
 ///
 /// #[derive(Debug, PartialEq, Eq)]
-/// enum EnumB { Case1, Case2(i64), Case3(StructB) }
+/// enum EnumB { Case1, Case2(i64), Case3(StructB, i64) }
 ///
 /// #[derive(Debug, PartialEq, Eq)]
 /// struct CollectionA { items: Vec<EnumA> };
@@ -314,8 +314,8 @@ macro_rules! __force_from_enum_variant {
 /// force_from!((src: EnumA) -> <EnumB, anyhow::Error> as enum {
 ///     Case1,
 ///     Case2(n),
-///     Case3(x),
-///     Case4(s) => warned::Warned::new(Self::Case1, vec![anyhow::anyhow!("fallback to Case1")])
+///     Case3(x, n),
+///     Case4(s, b) => warned::Warned::new(Self::Case1, vec![anyhow::anyhow!("fallback to Case1")])
 /// });
 /// assert_eq!(EnumB::Case2(321), EnumA::Case2(321).force_into().value);
 ///
@@ -354,11 +354,11 @@ macro_rules! force_from {
     };
 
     // convert enum type
-    (($src:ident : $src_type:ty) -> <$dst_type:ty, $warn_type:ty> as enum { $($variant:ident$(($var:ident))?$(=> $value:expr)?),*$(,)? }) => {
+    (($src:ident : $src_type:ty) -> <$dst_type:ty, $warn_type:ty> as enum { $($variant:ident$(($($var:ident),*))?$(=> $value:expr)?),*$(,)? }) => {
         force_from!(($src: $src_type) -> <$dst_type, $warn_type> {
             type Src = $src_type;
             match $src {
-                $(Src::$variant$(($var))? => __force_from_enum_variant!($variant$(($var))? $(=> $value)?),)*
+                $(Src::$variant$(($($var),*))? => __force_from_enum_variant!($variant$(($($var),*))? $(=> $value)?),)*
             }
         });
     };
