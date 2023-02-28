@@ -162,8 +162,8 @@ macro_rules! __try_from_struct_field {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __try_from_enum_variant {
-    ($variant:ident $(($var:ident))?) => { Ok(Self::$variant$(($var.try_into()?))?)  };
-    ($variant:ident $(($var:ident))? => $value:expr) => { $value };
+    ($variant:ident $(($($var:ident),*))?) => { Ok(Self::$variant$(($($var.try_into()?),*))?)  };
+    ($variant:ident $(($($var:ident),*))? => $value:expr) => { $value };
 }
 
 /// Helper to `impl TryFrom<$src_type> for $dst_type`.
@@ -180,10 +180,10 @@ macro_rules! __try_from_enum_variant {
 /// struct StructB { num: i64, text: String }
 ///
 /// #[derive(Debug, PartialEq, Eq)]
-/// enum EnumA { Case1, Case2(i32), Case3(StructA), Case4(String) }
+/// enum EnumA { Case1, Case2(i32), Case3(StructA, i32), Case4(String) }
 ///
 /// #[derive(Debug, PartialEq, Eq)]
-/// enum EnumB { Case1, Case2(i64), Case3(StructB) }
+/// enum EnumB { Case1, Case2(i64), Case3(StructB, i64) }
 ///
 /// // convert struct to struct
 /// try_from!((src: StructA) -> <StructB, anyhow::Error> as struct {
@@ -196,7 +196,7 @@ macro_rules! __try_from_enum_variant {
 /// try_from!((src: EnumA) -> <EnumB, anyhow::Error> as enum {
 ///     Case1,
 ///     Case2(n),
-///     Case3(x),
+///     Case3(x, n),
 ///     Case4(s) => Err(anyhow::anyhow!("error")),
 /// });
 /// assert_eq!(EnumB::Case2(321), EnumA::Case2(321).try_into().unwrap());
@@ -227,11 +227,11 @@ macro_rules! try_from {
     };
 
     // convert enum type
-    (($src:ident : $src_type:ty) -> <$dst_type:ty, $err_type:ty> as enum { $($variant:ident$(($var:ident))?$(=> $value:expr)?),*$(,)? }) => {
+    (($src:ident : $src_type:ty) -> <$dst_type:ty, $err_type:ty> as enum { $($variant:ident$(($($var:ident),*))?$(=> $value:expr)?),*$(,)? }) => {
         try_from!(($src: $src_type) -> <$dst_type, $err_type> {
             type Src = $src_type;
             match $src {
-                $(Src::$variant$(($var))? => __try_from_enum_variant!($variant$(($var))? $(=> $value)?),)*
+                $(Src::$variant$(($($var),*))? => __try_from_enum_variant!($variant$(($($var),*))? $(=> $value)?),)*
             }
         });
     };
