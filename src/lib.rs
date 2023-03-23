@@ -128,9 +128,9 @@ macro_rules! from {
     (($src:ident : $src_type:ty) -> $dst_type:ty as struct {
         $($field:ident$(: $value:expr)?),*$(,)?
     }) => {
-        from!(($src: $src_type) -> $dst_type {
+        $crate::from!(($src: $src_type) -> $dst_type {
             Self {
-                $($field: __from_struct_field!($src.$field $(=> $value)?)),*
+                $($field: $crate::__from_struct_field!($src.$field $(=> $value)?)),*
             }
         });
     };
@@ -139,10 +139,10 @@ macro_rules! from {
     (($src:ident : $src_type:ty) -> $dst_type:ty as enum {
         $($variant:ident$(($($var:ident),*))?$(=> $value:expr)?),*$(,)?
     }) => {
-        from!(($src: $src_type) -> $dst_type {
+        $crate::from!(($src: $src_type) -> $dst_type {
             type Src = $src_type;
             match $src {
-                $(Src::$variant$(($($var),*))? => __from_enum_variant!($variant$(($($var),*))? $(=> $value)?)),*
+                $(Src::$variant$(($($var),*))? => $crate::__from_enum_variant!($variant$(($($var),*))? $(=> $value)?)),*
             }
         });
     };
@@ -225,9 +225,9 @@ macro_rules! try_from {
     (($src:ident : $src_type:ty) -> <$dst_type:ty, $err_type:ty> as struct {
         $($field:ident$(: $value:expr)?),*$(,)?
     }) => {
-        try_from!(($src: $src_type) -> <$dst_type, $err_type> {
+        $crate::try_from!(($src: $src_type) -> <$dst_type, $err_type> {
             Ok(Self {
-                $($field: __try_from_struct_field!($src.$field $(=> $value)?),)*
+                $($field: $crate::__try_from_struct_field!($src.$field $(=> $value)?),)*
             })
         });
     };
@@ -236,10 +236,10 @@ macro_rules! try_from {
     (($src:ident : $src_type:ty) -> <$dst_type:ty, $err_type:ty> as enum {
         $($variant:ident$(($($var:ident),*))?$(=> $value:expr)?),*$(,)?
     }) => {
-        try_from!(($src: $src_type) -> <$dst_type, $err_type> {
+        $crate::try_from!(($src: $src_type) -> <$dst_type, $err_type> {
             type Src = $src_type;
             match $src {
-                $(Src::$variant$(($($var),*))? => __try_from_enum_variant!($variant$(($($var),*))? $(=> $value)?),)*
+                $(Src::$variant$(($($var),*))? => $crate::__try_from_enum_variant!($variant$(($($var),*))? $(=> $value)?),)*
             }
         });
     };
@@ -256,7 +256,10 @@ pub use warned;
 #[macro_export]
 macro_rules! __force_from_struct_field {
     ($src:ident.$field:ident, $warnings:ident) => {
-        $crate::warned::Warned::unwrap($src.$field.force_into(), &mut $warnings)
+        $crate::warned::Warned::unwrap(
+            $crate::warned::ForceInto::force_into($src.$field),
+            &mut $warnings,
+        )
     };
     ($src:ident.$field:ident, $warnings:ident => @warn $value:expr) => {
         $crate::warned::Warned::unwrap($value, &mut $warnings)
@@ -278,7 +281,7 @@ macro_rules! __force_from_enum_variant {
     ($variant:ident($($var:ident),*)) => {{
         use $crate::warned::Warned;
         let mut warnings = vec![];
-        let value = Self::$variant($(Warned::unwrap($var.force_into(), &mut warnings)),*);
+        let value = Self::$variant($(Warned::unwrap($crate::warned::ForceInto::force_into($var), &mut warnings)),*);
         Warned::new(value, warnings)
     }};
     ($variant:ident $(($($var:ident),*))? => $value:expr) => {
@@ -354,10 +357,10 @@ macro_rules! force_from {
     (($src:ident : $src_type:ty) -> <$dst_type:ty, $warn_type:ty> as struct {
         $($field:ident$(: $(@$warn:ident)? $value:expr)?),*$(,)?
     }) => {
-        force_from!(($src: $src_type) -> <$dst_type, $warn_type> {
+        $crate::force_from!(($src: $src_type) -> <$dst_type, $warn_type> {
             let mut warnings: Vec<$warn_type> = vec![];
             let value = Self {
-                $($field: __force_from_struct_field!($src.$field, warnings $(=> $(@$warn)? $value)?),)*
+                $($field: $crate::__force_from_struct_field!($src.$field, warnings $(=> $(@$warn)? $value)?),)*
             };
             $crate::warned::Warned::new(value, warnings)
         });
@@ -367,10 +370,10 @@ macro_rules! force_from {
     (($src:ident : $src_type:ty) -> <$dst_type:ty, $warn_type:ty> as enum {
         $($variant:ident$(($($var:ident),*))?$(=> $value:expr)?),*$(,)?
     }) => {
-        force_from!(($src: $src_type) -> <$dst_type, $warn_type> {
+        $crate::force_from!(($src: $src_type) -> <$dst_type, $warn_type> {
             type Src = $src_type;
             match $src {
-                $(Src::$variant$(($($var),*))? => __force_from_enum_variant!($variant$(($($var),*))? $(=> $value)?),)*
+                $(Src::$variant$(($($var),*))? => $crate::__force_from_enum_variant!($variant$(($($var),*))? $(=> $value)?),)*
             }
         });
     };
