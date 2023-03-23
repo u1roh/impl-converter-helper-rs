@@ -1,6 +1,6 @@
 [package]
 name = "impl-converter-helper"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 authors = ["Yuichiro Terada <terada.yuichiro@gmail.com>"]
 repository = "https://github.com/u1roh/impl-converter-helper-rs"
